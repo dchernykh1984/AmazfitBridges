@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { LABELS } from "../lib/i18n/labels.js";
-import { UI_KEYS, budgetFor, LONG_KEYS, MAX_LABEL, MAX_HINT } from "../lib/i18n/keys.js";
+import {
+  ACTION_KEYS,
+  budgetFor,
+  LONG_KEYS,
+  MAX_ACTION,
+  MAX_HINT,
+  MAX_LABEL,
+  UI_KEYS,
+} from "../lib/i18n/keys.js";
 import {
   LANGUAGES,
   DEFAULT_LANGUAGE,
@@ -8,7 +16,7 @@ import {
   resolveLanguage,
   languageFromZeppCode,
 } from "../lib/i18n/index.js";
-import { menuMetrics, pausedRows, solvedRows, startRows } from "../lib/hud.js";
+import { hudLayout, menuMetrics, pausedRows, solvedRows, startRows } from "../lib/hud.js";
 import { LEVELS } from "../lib/levels.js";
 
 // The language list mirrors the sibling AmazfitRaceStats and AmazfitSerpent
@@ -56,8 +64,12 @@ describe("locale completeness", () => {
 });
 
 describe("the label budgets", () => {
-  it("gives the full-width lines more room than the words on buttons", () => {
+  it("narrows for the action bar and widens for a full-width line", () => {
+    expect(MAX_ACTION).toBeLessThan(MAX_LABEL);
     expect(MAX_HINT).toBeGreaterThan(MAX_LABEL);
+    for (const key of ACTION_KEYS) {
+      expect(budgetFor(key)).toBe(MAX_ACTION);
+    }
     for (const key of LONG_KEYS) {
       expect(budgetFor(key)).toBe(MAX_HINT);
     }
@@ -74,6 +86,15 @@ describe("the label budgets", () => {
     for (const key of LONG_KEYS) {
       expect(buttonRoles.has(key), `${key} is drawn on a button`).toBe(false);
     }
+  });
+
+  it("gives the narrow budget to exactly the two buttons in the action bar", () => {
+    // hudLayout splits one chord between them, so they are the tightest labels
+    // in the app - tighter than anything in a menu.
+    expect([...ACTION_KEYS].sort()).toEqual(["menu", "undo"]);
+    const hud = hudLayout(480);
+    const menuButton = menuMetrics(480).maxWidth;
+    expect(hud.undo.w).toBeLessThan(menuButton);
   });
 });
 
@@ -96,7 +117,7 @@ describe("every screen has something to say", () => {
     // Two rows are filled in rather than looked up: `record` is a label plus a
     // time, and `level` is whichever difficulty is selected. Everything else is
     // a key in its own right.
-    const substitutes = { record: "best", level: LEVELS[0].label };
+    const substitutes = { record: "best", level: LEVELS[0].label, time: "time" };
     for (const role of roles) {
       expect(UI_KEYS, role).toContain(substitutes[role] || role);
     }
