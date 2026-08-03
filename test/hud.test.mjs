@@ -125,6 +125,13 @@ describe("stackLayout", () => {
     expect(stack.rows.map((row) => row.role)).toContain("hint_drag");
   });
 
+  it("gives the best time and the boards solved a line each", () => {
+    // Run together they overrun the row in the longer languages.
+    const roles = startRows(menuMetrics(480), true).map((row) => row.role);
+    expect(roles).toContain("best");
+    expect(roles).toContain("solved");
+  });
+
   it("keeps every row inside the round screen", () => {
     for (const size of ROUND_SIZES) {
       const metrics = menuMetrics(size);
@@ -137,12 +144,31 @@ describe("stackLayout", () => {
     }
   });
 
-  it("puts a backdrop behind the whole stack", () => {
-    const metrics = menuMetrics(480);
-    const rows = startRows(metrics, true);
-    const stack = stackLayout(480, rows, metrics);
-    expect(stack.backdrop.y).toBeLessThanOrEqual(stack.top);
-    expect(stack.backdrop.y + stack.backdrop.h).toBeGreaterThanOrEqual(stack.top + stack.height);
+  it("puts a backdrop behind every row of the stack", () => {
+    for (const size of ROUND_SIZES) {
+      const metrics = menuMetrics(size);
+      for (const rows of [startRows(metrics, true), pausedRows(metrics), solvedRows(metrics)]) {
+        const stack = stackLayout(size, rows, metrics);
+        expect(stack.backdrop.y).toBeLessThanOrEqual(stack.top);
+        expect(stack.backdrop.y + stack.backdrop.h).toBeGreaterThanOrEqual(
+          stack.top + stack.height
+        );
+        // Nothing may hang over the edge of its own background.
+        for (const row of stack.rows) {
+          expect(row.box.x).toBeGreaterThanOrEqual(stack.backdrop.x);
+          expect(row.box.x + row.box.w).toBeLessThanOrEqual(stack.backdrop.x + stack.backdrop.w);
+        }
+      }
+    }
+  });
+
+  it("keeps the backdrop on the screen", () => {
+    for (const size of ROUND_SIZES) {
+      const metrics = menuMetrics(size);
+      const stack = stackLayout(size, startRows(metrics, true), metrics);
+      expect(stack.backdrop.y).toBeGreaterThanOrEqual(0);
+      expect(stack.backdrop.y + stack.backdrop.h).toBeLessThanOrEqual(size);
+    }
   });
 });
 
