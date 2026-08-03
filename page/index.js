@@ -400,11 +400,8 @@ Page({
 
     this.drawMenu(startRows(METRICS, needsPanning(layout, SCREEN_SIZE)), {
       title: { text: this.text("title"), color: COLOR_TEXT },
-      record: {
-        text:
-          this.text("best") + " " + record + "   " + this.text("solved") + " " + this.state.solved,
-        color: COLOR_MUTED,
-      },
+      best: { text: this.text("best") + " " + record, color: COLOR_MUTED },
+      solved: { text: this.text("solved") + " " + this.state.solved, color: COLOR_MUTED },
       difficulty: { text: this.text("difficulty"), color: COLOR_MUTED },
       level: { text: this.text(LEVELS[this.state.level].label) },
       play: { text: this.text("play") },
