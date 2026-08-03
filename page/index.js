@@ -44,7 +44,7 @@ import {
   clearSelection,
   undo,
 } from "../lib/session.js";
-import { boxIntersectsScreen } from "../lib/round-geometry.js";
+import { clipToScreen } from "../lib/round-geometry.js";
 import { SCREEN_SIZE } from "../utils/config/device.js";
 import {
   BRIGHT_TIME_MS,
@@ -78,8 +78,10 @@ const MAX_HINTS = 4;
 // Where a widget is parked when it is off screen. Zepp OS has no way to take a
 // widget out of the drawing list short of deleting it, and deleting a hundred
 // widgets per drag frame is not an option, so they are moved somewhere the
-// screen is not instead.
-const PARKED = { x: -SCREEN_SIZE, y: -SCREEN_SIZE, w: 1, h: 1 };
+// screen is not instead. That somewhere is the bottom-right corner of the
+// bounding square, which on a round watch is bezel rather than glass - a legal
+// coordinate that nobody can see.
+const PARKED = { x: SCREEN_SIZE - 1, y: SCREEN_SIZE - 1, w: 1, h: 1 };
 
 // A widget that failed to take a setting is not worth crashing a game over, and
 // a watch that has no storage should still play - just without remembering. The
@@ -361,9 +363,9 @@ Page({
       this.applyResult(undo(this.state.session));
     } else if (role === "menu" && screen === "playing") {
       this.showPaused();
-    } else if (role === "resume") {
+    } else if (role === "resume" && screen === "paused") {
       this.resumeGame();
-    } else if (role === "restart") {
+    } else if (role === "restart" && screen === "paused") {
       this.restartBoard();
     } else if (role === "quit" && (screen === "paused" || screen === "solved")) {
       this.showStart();
@@ -678,34 +680,43 @@ Page({
   },
 
   // Move a rectangle to where it belongs, or off the screen when it does not
-  // belong anywhere visible. The parked flag keeps a widget that is already away
-  // from being told so again on every frame of a drag.
+  // belong anywhere visible. The box is trimmed to the glass first, so a widget
+  // hanging off a dragged board is never given a negative coordinate; the corner
+  // radius is trimmed with it, because a rounded rectangle whose radius is more
+  // than half its width has nothing sensible to draw. The parked flag keeps a
+  // widget that is already away from being told so again on every frame.
   place(entry, box, color, radius) {
-    if (!boxIntersectsScreen(SCREEN_SIZE, box, 0)) {
+    const visible = clipToScreen(SCREEN_SIZE, box);
+    if (visible === null) {
       this.park(entry);
       return;
     }
     entry.widget.setProperty(hmUI.prop.MORE, {
-      x: box.x,
-      y: box.y,
-      w: box.w,
-      h: box.h,
-      radius,
+      x: visible.x,
+      y: visible.y,
+      w: visible.w,
+      h: visible.h,
+      radius: Math.min(radius, Math.floor(Math.min(visible.w, visible.h) / 2)),
       color,
     });
     entry.parked = false;
   },
 
+  // An island's number rides along with its disc. The box is trimmed the same
+  // way, which nudges a half-hidden number a pixel or two off the middle of its
+  // island - at the very edge of a round screen, where the bezel has most of it
+  // anyway.
   placeText(entry, box, color) {
-    if (!boxIntersectsScreen(SCREEN_SIZE, box, 0)) {
+    const visible = clipToScreen(SCREEN_SIZE, box);
+    if (visible === null) {
       this.park(entry);
       return;
     }
     entry.widget.setProperty(hmUI.prop.MORE, {
-      x: box.x,
-      y: box.y,
-      w: box.w,
-      h: box.h,
+      x: visible.x,
+      y: visible.y,
+      w: visible.w,
+      h: visible.h,
       color,
       text_size: entry.size,
       align_h: hmUI.align.CENTER_H,
