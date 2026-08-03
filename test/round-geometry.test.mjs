@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  boxIntersectsScreen,
-  centeredBox,
-  safeHalfWidth,
-  safeLineWidth,
-} from "../lib/round-geometry.js";
+import { centeredBox, clipToScreen, safeHalfWidth, safeLineWidth } from "../lib/round-geometry.js";
 import { ROUND_SIZES } from "./fixtures.mjs";
 
 describe("safeHalfWidth", () => {
@@ -78,24 +73,67 @@ describe("centeredBox", () => {
   });
 });
 
-describe("boxIntersectsScreen", () => {
-  it("sees a box in the middle", () => {
-    expect(boxIntersectsScreen(480, { x: 200, y: 200, w: 40, h: 40 }, 0)).toBe(true);
+describe("clipToScreen", () => {
+  it("leaves a box that is already on screen alone", () => {
+    const box = { x: 100, y: 120, w: 60, h: 40 };
+    expect(clipToScreen(480, box)).toEqual(box);
   });
 
-  it("sees a box that only overlaps at an edge", () => {
-    expect(boxIntersectsScreen(480, { x: -30, y: 200, w: 40, h: 40 }, 0)).toBe(true);
-    expect(boxIntersectsScreen(480, { x: 470, y: 200, w: 40, h: 40 }, 0)).toBe(true);
+  it("never hands back a negative coordinate", () => {
+    for (const box of [
+      { x: -50, y: 100, w: 200, h: 10 },
+      { x: 100, y: -50, w: 10, h: 200 },
+      { x: -20, y: -20, w: 60, h: 60 },
+    ]) {
+      const clipped = clipToScreen(480, box);
+      expect(clipped.x).toBeGreaterThanOrEqual(0);
+      expect(clipped.y).toBeGreaterThanOrEqual(0);
+    }
   });
 
-  it("does not see a box that has been panned away", () => {
-    expect(boxIntersectsScreen(480, { x: -400, y: 200, w: 40, h: 40 }, 0)).toBe(false);
-    expect(boxIntersectsScreen(480, { x: 200, y: 900, w: 40, h: 40 }, 0)).toBe(false);
+  it("keeps the part that is on screen, and only that part", () => {
+    // A bridge running in from the left keeps its right-hand end exactly where
+    // it was, so it still meets the island it belongs to.
+    const clipped = clipToScreen(480, { x: -50, y: 100, w: 200, h: 10 });
+    expect(clipped).toEqual({ x: 0, y: 100, w: 150, h: 10 });
+    expect(clipped.x + clipped.w).toBe(150);
   });
 
-  it("keeps a margin of slack when asked", () => {
-    const box = { x: -60, y: 200, w: 40, h: 40 };
-    expect(boxIntersectsScreen(480, box, 0)).toBe(false);
-    expect(boxIntersectsScreen(480, box, 40)).toBe(true);
+  it("trims a box hanging off the far edge", () => {
+    expect(clipToScreen(480, { x: 400, y: 400, w: 200, h: 200 })).toEqual({
+      x: 400,
+      y: 400,
+      w: 80,
+      h: 80,
+    });
+  });
+
+  it("keeps every result inside the screen", () => {
+    for (let x = -200; x <= 600; x += 37) {
+      for (let y = -200; y <= 600; y += 53) {
+        const clipped = clipToScreen(480, { x, y, w: 90, h: 30 });
+        if (clipped === null) {
+          continue;
+        }
+        expect(clipped.x).toBeGreaterThanOrEqual(0);
+        expect(clipped.y).toBeGreaterThanOrEqual(0);
+        expect(clipped.x + clipped.w).toBeLessThanOrEqual(480);
+        expect(clipped.y + clipped.h).toBeLessThanOrEqual(480);
+        expect(clipped.w).toBeGreaterThan(0);
+        expect(clipped.h).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("reports nothing for a box that has been panned right off", () => {
+    expect(clipToScreen(480, { x: -400, y: 100, w: 40, h: 40 })).toBe(null);
+    expect(clipToScreen(480, { x: 100, y: 900, w: 40, h: 40 })).toBe(null);
+    expect(clipToScreen(480, { x: 480, y: 100, w: 40, h: 40 })).toBe(null);
+  });
+
+  it("reports nothing for a box that only touches the edge", () => {
+    // Exactly zero pixels wide once trimmed is nothing to draw, not a sliver.
+    expect(clipToScreen(480, { x: -40, y: 100, w: 40, h: 40 })).toBe(null);
+    expect(clipToScreen(480, { x: 100, y: -40, w: 40, h: 40 })).toBe(null);
   });
 });
