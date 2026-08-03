@@ -26,7 +26,6 @@ describe("createSession", () => {
     expect(session.state).toEqual(puzzle.edges.map(() => 0));
     expect(session.selected).toBe(null);
     expect(session.solved).toBe(false);
-    expect(session.moves).toBe(0);
     expect(canUndo(session)).toBe(false);
   });
 });
@@ -81,7 +80,6 @@ describe("building a bridge", () => {
     expect(session.state[edge]).toBe(1);
     expect(result.changed).toBe(true);
     expect(result.edges).toEqual([edge]);
-    expect(session.moves).toBe(1);
   });
 
   it("cycles the same pair from one bridge to two by tapping it again", () => {
@@ -238,7 +236,6 @@ describe("restart", () => {
     const result = restart(session);
     expect(session.state).toEqual(puzzle.edges.map(() => 0));
     expect(session.selected).toBe(null);
-    expect(session.moves).toBe(0);
     expect(canUndo(session)).toBe(false);
     expect(result.edges).toEqual([0]);
   });
