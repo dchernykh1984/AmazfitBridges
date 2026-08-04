@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { createLayout, cellCenter } from "../lib/board-geometry.js";
 import {
   axisBounds,
+  boxToScreen,
   centerCamera,
-  centerOn,
   clampAxis,
   clampCamera,
-  everyCellReachable,
+  discIsOnScreen,
   needsPanning,
   overscrollFor,
   panBy,
@@ -15,6 +15,29 @@ import {
 } from "../lib/camera.js";
 import { LEVELS } from "../lib/levels.js";
 import { ROUND_SIZES } from "./fixtures.mjs";
+
+// Put a world point as near the middle of the screen as the limits allow. The
+// app never needs this - it only ever centres a whole board - but it is how the
+// tests ask "could the player get to this cell?".
+function centerOn(worldX, worldY, layout, viewSize) {
+  return clampCamera({ x: worldX - viewSize / 2, y: worldY - viewSize / 2 }, layout, viewSize);
+}
+
+// Whether every cell of a board can be brought fully into view by dragging. The
+// generator may put an island in any cell, so a board that fails this has a cell
+// the player could never properly see.
+function everyCellReachable(layout, viewSize) {
+  for (let row = 0; row < layout.rows; row++) {
+    for (let col = 0; col < layout.cols; col++) {
+      const centre = cellCenter(layout, col, row);
+      const screen = toScreen(centerOn(centre.x, centre.y, layout, viewSize), centre.x, centre.y);
+      if (!discIsOnScreen(viewSize, screen.x, screen.y, layout.radius)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 const VIEW = 480;
 
@@ -136,6 +159,21 @@ describe("reaching the whole board", () => {
     const screen = toScreen(camera, centre.x, centre.y);
     const distance = Math.hypot(screen.x - VIEW / 2, screen.y - VIEW / 2);
     expect(distance + layout.radius).toBeLessThanOrEqual(VIEW / 2);
+  });
+});
+
+describe("boxToScreen", () => {
+  it("shifts a whole box by the camera without resizing it", () => {
+    const box = { x: 300, y: 400, w: 90, h: 12 };
+    expect(boxToScreen({ x: 100, y: 50 }, box)).toEqual({ x: 200, y: 350, w: 90, h: 12 });
+  });
+
+  it("agrees with toScreen about where the corner lands", () => {
+    const camera = { x: -37, y: 214 };
+    const box = { x: 300, y: 400, w: 90, h: 12 };
+    const corner = toScreen(camera, box.x, box.y);
+    const moved = boxToScreen(camera, box);
+    expect({ x: moved.x, y: moved.y }).toEqual(corner);
   });
 });
 

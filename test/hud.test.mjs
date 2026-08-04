@@ -6,11 +6,18 @@ import {
   menuMetrics,
   pausedRows,
   solvedRows,
-  stackFits,
   stackLayout,
   startRows,
 } from "../lib/hud.js";
 import { ROUND_SIZES } from "./fixtures.mjs";
+
+// A stacked menu that is taller than the screen would be cut off at both ends.
+// The check lives here rather than in lib/ because nothing the app runs needs to
+// ask - it is a guarantee about the metrics, and this is where guarantees are
+// kept honest.
+function stackFits(screenSize, items) {
+  return items.reduce((total, item) => total + item.height, 0) <= screenSize;
+}
 
 function cornersInside(size, box) {
   const radius = size / 2;
