@@ -1,9 +1,13 @@
 # Amazfit Bridges
 
-**Hashiwokakero** ("build bridges") for round Amazfit watches - a **Zepp OS mini app**.
+**Island Bridges** is Hashiwokakero ("build bridges") as a **Zepp OS mini app** for round
+Amazfit watches.
 
 Islands carry a number. Join them with bridges until every island has exactly as many
 bridge ends as its number, and every island is part of one connected network.
+
+The repository is named `AmazfitBridges`; **Island Bridges** is the name the app is
+registered under in the Zepp App Store.
 
 ## The rules
 
@@ -87,6 +91,19 @@ npm run build     # produce the .zab store bundle
 
 `dev`, `preview` and `build` fetch the [Zeus CLI](https://docs.zepp.com/docs/guides/quick-start/)
 on demand (`npx`), so it is not tracked as a dependency; the first run downloads it.
+
+### App identity
+
+The app is registered in the [Zepp developer console](https://console.zepp.com/) as
+**Island Bridges**, appId **`1122446`** - both live in `app.json`. Keep them as they
+are: the dev preview and `zeus dev` are cloud-mediated, and an appId that is not
+registered to the signed-in account makes the watch install the app but silently
+refuse to launch its screen, with no error to go on.
+
+The name on the start screen is deliberately **not** the store name: `title` in
+`lib/i18n/labels.js` is the short form ("Bridges", and a translation of it in each of
+the other ten languages), because the title row allows twelve characters and the store
+name is fourteen. `test/app-config.test.mjs` pins all of this.
 
 ## Pre-commit hooks (contributors)
 
