@@ -5,7 +5,7 @@ import { setPageBrightTime, resetPageBrightTime } from "@zos/display";
 import { LocalStorage } from "@zos/storage";
 
 import { bridgeRects, createLayout, hitTest, islandCenter } from "../lib/board-geometry.js";
-import { centerCamera, needsPanning, panBy } from "../lib/camera.js";
+import { boxToScreen, centerCamera, needsPanning, panBy, toWorld } from "../lib/camera.js";
 import { generatePuzzle } from "../lib/generator.js";
 import { createTracker, pointerDown, pointerMove, pointerUp, cancel } from "../lib/gestures.js";
 import {
@@ -136,6 +136,7 @@ Page({
     menuZones: [],
     lastDrawAt: 0,
     panPending: false,
+    buildTimer: null,
 
     // Widgets, grouped by lifetime. The background outlives the page; the board
     // widgets outlive a game; the HUD and the menu outlive a screen; the touch
@@ -191,6 +192,10 @@ Page({
 
   onDestroy() {
     this.state.destroyed = true;
+    if (this.state.buildTimer !== null) {
+      clearTimeout(this.state.buildTimer);
+      this.state.buildTimer = null;
+    }
     try {
       offGesture();
     } catch {
@@ -280,7 +285,8 @@ Page({
   // shifted by the camera first.
   tapBoard(x, y) {
     const { camera, layout, puzzle, session } = this.state;
-    const hit = hitTest(puzzle, layout, x + camera.x, y + camera.y);
+    const point = toWorld(camera, x, y);
+    const hit = hitTest(puzzle, layout, point.x, point.y);
 
     let result;
     if (hit === null) {
@@ -421,10 +427,11 @@ Page({
     this.drawMenu([{ kind: "text", role: "generating", height: METRICS.row }], {
       generating: { text: this.text("generating"), color: COLOR_TEXT },
     });
-    setTimeout(() => this.beginPuzzle(), 40);
+    this.state.buildTimer = setTimeout(() => this.beginPuzzle(), 40);
   },
 
   beginPuzzle() {
+    this.state.buildTimer = null;
     if (this.state.destroyed || this.state.screen !== "generating") {
       return;
     }
@@ -574,7 +581,7 @@ Page({
         this.park(entries[i]);
         continue;
       }
-      this.place(entries[i], this.toScreen(rects[i]), COLOR_BRIDGE, 0);
+      this.place(entries[i], boxToScreen(this.state.camera, rects[i]), COLOR_BRIDGE, 0);
     }
   },
 
@@ -582,7 +589,7 @@ Page({
     const { layout, puzzle, session } = this.state;
     const centre = islandCenter(layout, puzzle.islands[id]);
     const size = layout.radius * 2;
-    const box = this.toScreen({
+    const box = boxToScreen(this.state.camera, {
       x: centre.x - layout.radius,
       y: centre.y - layout.radius,
       w: size,
@@ -610,7 +617,12 @@ Page({
     const outer = layout.radius + Math.max(2, Math.round(layout.cell * 0.06));
     this.place(
       this.state.ring,
-      this.toScreen({ x: centre.x - outer, y: centre.y - outer, w: outer * 2, h: outer * 2 }),
+      boxToScreen(this.state.camera, {
+        x: centre.x - outer,
+        y: centre.y - outer,
+        w: outer * 2,
+        h: outer * 2,
+      }),
       COLOR_ISLAND_RING,
       outer
     );
@@ -629,17 +641,8 @@ Page({
         continue;
       }
       const lane = bridgeRects(layout, puzzle, moves[i].edgeId, 1)[0];
-      this.place(this.state.ghosts[i], this.toScreen(lane), COLOR_GHOST, 0);
+      this.place(this.state.ghosts[i], boxToScreen(this.state.camera, lane), COLOR_GHOST, 0);
     }
-  },
-
-  toScreen(rect) {
-    return {
-      x: Math.round(rect.x - this.state.camera.x),
-      y: Math.round(rect.y - this.state.camera.y),
-      w: rect.w,
-      h: rect.h,
-    };
   },
 
   createParkedRect(color) {
