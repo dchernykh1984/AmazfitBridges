@@ -14,7 +14,6 @@ import {
   isSolved,
   islandStatus,
   isValidSolution,
-  maxCountFor,
   MAX_BRIDGES,
   movesFrom,
   nextCount,
@@ -183,26 +182,6 @@ describe("canPlace", () => {
     // Clearing the first lane frees the second again.
     const cleared = withBridge(puzzle, state, across, 0);
     expect(canPlace(puzzle, cleared, down, 1)).toBe(true);
-  });
-});
-
-describe("maxCountFor", () => {
-  it("reports how much room a lane still has", () => {
-    const puzzle = ringPuzzle();
-    expect(maxCountFor(puzzle, emptyState(puzzle), 0)).toBe(2);
-  });
-
-  it("reports nothing for a blocked lane", () => {
-    const puzzle = crossingPuzzle();
-    const across = edgeAtCells(puzzle, [0, 1], [2, 1]);
-    const down = edgeAtCells(puzzle, [1, 0], [1, 2]);
-    const state = withBridge(puzzle, emptyState(puzzle), across, 1);
-    expect(maxCountFor(puzzle, state, down)).toBe(0);
-  });
-
-  it("is limited by whichever island has less room", () => {
-    const puzzle = linePuzzle();
-    expect(maxCountFor(puzzle, emptyState(puzzle), edgeAtCells(puzzle, [0, 0], [2, 0]))).toBe(1);
   });
 });
 

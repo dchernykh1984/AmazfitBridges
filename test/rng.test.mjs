@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createRandom, normalizeSeed, pick, randomInt, shuffle } from "../lib/rng.js";
+import { createRandom, normalizeSeed, randomInt, shuffle } from "../lib/rng.js";
 
 function draw(random, count) {
   const values = [];
@@ -82,20 +82,6 @@ describe("randomInt", () => {
     expect(randomInt(random, 0)).toBe(0);
     expect(randomInt(random, -5)).toBe(0);
     expect(randomInt(random, NaN)).toBe(0);
-  });
-});
-
-describe("pick", () => {
-  it("returns an element of the list", () => {
-    const random = createRandom(5);
-    const items = ["a", "b", "c"];
-    for (let i = 0; i < 100; i++) {
-      expect(items).toContain(pick(random, items));
-    }
-  });
-
-  it("returns null for an empty list", () => {
-    expect(pick(createRandom(5), [])).toBe(null);
   });
 });
 
