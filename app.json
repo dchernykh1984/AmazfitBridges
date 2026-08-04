@@ -1,8 +1,8 @@
 {
   "configVersion": "v3",
   "app": {
-    "appId": 1000001,
-    "appName": "Bridges",
+    "appId": 1122446,
+    "appName": "Island Bridges",
     "appType": "app",
     "version": {
       "code": 100,
@@ -41,10 +41,10 @@
   },
   "i18n": {
     "en-US": {
-      "appName": "Bridges"
+      "appName": "Island Bridges"
     },
     "ru-RU": {
-      "appName": "Bridges"
+      "appName": "Island Bridges"
     }
   },
   "defaultLanguage": "en-US"
