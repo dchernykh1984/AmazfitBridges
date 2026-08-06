@@ -119,7 +119,8 @@ push.
 ## Continuous integration and releases
 
 Every pull request must pass the required checks: Prettier, ESLint, the unit tests,
-`actionlint`, commitizen (Conventional Commits), and an OSV dependency scan.
+the app-version check described below, `actionlint`, commitizen (Conventional
+Commits), and an OSV dependency scan.
 
 Releases are automated with `release-please`: it maintains a version-bump PR from the
 Conventional Commits and, when merged, tags a GitHub Release. The release build
@@ -138,11 +139,12 @@ They are kept in step from `package.json`, which is the one `release-please` doe
 - `release-please` writes `version.name` into `app.json` in the release PR itself
   (`extra-files` in `release-please-config.json`), so the repository never claims a
   version it did not release.
-- `npm run version:sync` writes both numbers, deriving the code as
-  `major * 10000 + minor * 100 + patch`. The release build runs it before `zeus build`,
-  so a bundle built in CI and one built on a laptop carry the same numbers. It refuses
-  a version it cannot pack - a minor or patch of 100 or more would produce a code that
-  sorts below one already in the store.
+- `npm run version:sync` (`scripts/sync-app-version.mjs`, the one thing in `scripts/`)
+  writes both numbers, deriving the code as `major * 10000 + minor * 100 + patch`. The
+  release build runs it before `zeus build`, and so does `npm run build`, so a bundle
+  built in CI and one built on a laptop carry the same numbers. It refuses a version it
+  cannot pack - a minor or patch of 100 or more would produce a code that sorts below
+  one already in the store.
 - `npm run version:check` fails if `app.json` and `package.json` disagree on the name,
   and runs on every pull request. The code is not checked there: `release-please`
   cannot compute it, so between the release PR and the build it is legitimately one
