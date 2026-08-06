@@ -1,10 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { describe, it, expect, afterAll } from "vitest";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { syncedAppJson, versionCode } from "../scripts/sync-app-version.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const SCRIPT = join(ROOT, "scripts", "sync-app-version.mjs");
 const read = (file) => JSON.parse(readFileSync(join(ROOT, file), "utf8"));
 
 describe("versionCode", () => {
@@ -113,5 +116,80 @@ describe("the versions this repo actually ships", () => {
     expect(Number.isInteger(version.code)).toBe(true);
     expect(version.code).toBeGreaterThan(0);
     expect(versionCode(version.name)).toBeGreaterThanOrEqual(version.code);
+  });
+});
+
+// What CI actually runs is `npm run version:check`, and what decides whether it
+// passes - the check that forgives a stale code but not a stale name, and the
+// exit code it leaves behind - lives in main(), which importing this module
+// cannot reach. So run the script the way CI does, as a process, against a
+// throwaway copy of the only two files it reads.
+describe("running the script", () => {
+  const checkouts = [];
+  afterAll(() => {
+    for (const dir of checkouts) rmSync(dir, { recursive: true, force: true });
+  });
+
+  // The real app.json, with only the version moved: the script has to find its
+  // way around the file this repo actually ships, not a stand-in for it.
+  function checkout(packageVersion, appName, appCode) {
+    const dir = mkdtempSync(join(tmpdir(), "app-version-"));
+    checkouts.push(dir);
+    mkdirSync(join(dir, "scripts"));
+    cpSync(SCRIPT, join(dir, "scripts", "sync-app-version.mjs"));
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ version: packageVersion }) + "\n");
+    const app = read("app.json");
+    app.app.version = { code: appCode, name: appName };
+    writeFileSync(join(dir, "app.json"), JSON.stringify(app, null, 2) + "\n");
+    return dir;
+  }
+
+  function run(dir, ...args) {
+    const done = spawnSync(
+      process.execPath,
+      [join(dir, "scripts", "sync-app-version.mjs"), ...args],
+      {
+        encoding: "utf8",
+      }
+    );
+    return {
+      status: done.status,
+      output: done.stdout + done.stderr,
+      version: JSON.parse(readFileSync(join(dir, "app.json"), "utf8")).app.version,
+    };
+  }
+
+  it("fails the check when app.json is behind the release", () => {
+    const dir = checkout("0.3.0", "0.2.0", 200);
+    const done = run(dir, "--check");
+    expect(done.status).toBe(1);
+    expect(done.output).toContain("0.2.0");
+    expect(done.output).toContain("0.3.0");
+    // And it says what to do about it, since this is what a contributor sees.
+    expect(done.output).toContain("version:sync");
+    expect(done.version).toEqual({ code: 200, name: "0.2.0" });
+  });
+
+  // The release PR itself: release-please has written the name and cannot write
+  // the code. This is the state the check has to forgive, or no release passes.
+  it("passes the check when only the code is a release behind", () => {
+    const dir = checkout("0.3.0", "0.3.0", 200);
+    const done = run(dir, "--check");
+    expect(done.status).toBe(0);
+    expect(done.version).toEqual({ code: 200, name: "0.3.0" });
+  });
+
+  it("writes both numbers when run without --check", () => {
+    const dir = checkout("0.3.0", "0.2.0", 200);
+    const done = run(dir);
+    expect(done.status).toBe(0);
+    expect(done.version).toEqual({ code: 300, name: "0.3.0" });
+  });
+
+  it("refuses a version it cannot pack instead of writing one", () => {
+    const dir = checkout("0.100.0", "0.2.0", 200);
+    const done = run(dir);
+    expect(done.status).not.toBe(0);
+    expect(done.version).toEqual({ code: 200, name: "0.2.0" });
   });
 });
