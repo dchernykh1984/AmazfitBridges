@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/dchernykh1984/AmazfitBridges/compare/amazfit-bridges-v0.2.0...amazfit-bridges-v0.2.1) (2026-08-06)
+
+
+### Bug Fixes
+
+* keep the app version in step with every release ([a3959a2](https://github.com/dchernykh1984/AmazfitBridges/commit/a3959a21d22bf9a05786b54c32bb5116610e5771))
+
 ## [0.2.0](https://github.com/dchernykh1984/AmazfitBridges/compare/amazfit-bridges-v0.1.0...amazfit-bridges-v0.2.0) (2026-08-04)
 
 
