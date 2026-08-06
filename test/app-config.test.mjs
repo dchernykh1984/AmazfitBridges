@@ -9,11 +9,13 @@ const root = (name) => fileURLToPath(new URL(`../${name}`, import.meta.url));
 const appJson = JSON.parse(readFileSync(root("app.json"), "utf8"));
 const packageJson = JSON.parse(readFileSync(root("package.json"), "utf8"));
 
-// app.json is the one file the app ships that no other test opens, and the one
-// that carries the store identity. Nothing else would catch it regressing
-// either: the release build only runs on a release or a manual dispatch, never
-// on a pull request, so the first thing that would otherwise exercise a wrong id
-// is a manual store submission.
+// app.json carries the store identity, and nothing else would catch it
+// regressing: the release build only runs on a release or a manual dispatch,
+// never on a pull request, so the first thing that would otherwise exercise a
+// wrong id is a manual store submission.
+//
+// The version lives in the same file but is checked in app-version.test.mjs,
+// which knows the one moment the two numbers in it are allowed to disagree.
 describe("app.json", () => {
   it("carries the app id the game is registered under in the Zepp store", () => {
     // Registered as "Island Bridges". An unregistered or placeholder id installs
@@ -46,15 +48,6 @@ describe("app.json", () => {
     // Translated, not repeated: at least one language says it differently.
     const distinct = new Set(LANGUAGES.map((language) => LABELS[language].title));
     expect(distinct.size).toBeGreaterThan(1);
-  });
-
-  it("derives the store's version code from its own version name", () => {
-    // release-please bumps package.json and the release build syncs app.json from
-    // it, so the two may legitimately differ between a release PR and the build;
-    // what must always hold is that app.json agrees with itself.
-    const parts = appJson.app.version.name.split(".").map(Number);
-    expect(parts.length).toBe(3);
-    expect(appJson.app.version.code).toBe(parts[0] * 10000 + parts[1] * 100 + parts[2]);
   });
 
   it("is the same project the package is", () => {
