@@ -6,13 +6,16 @@
     "appType": "app",
     "version": {
       "code": 200,
-      "name": "0.2.0"
+      "name": "0.2.1"
     },
     "icon": "icon.png",
     "vender": "dchernykh1984",
     "description": "Hashiwokakero for round Amazfit watches: link the islands with the right number of bridges, drag the map to explore, four difficulties."
   },
-  "permissions": ["data:os.device.info", "device:os.local_storage"],
+  "permissions": [
+    "data:os.device.info",
+    "device:os.local_storage"
+  ],
   "runtime": {
     "apiVersion": {
       "compatible": "3.0.0",
@@ -24,7 +27,9 @@
     "common": {
       "module": {
         "page": {
-          "pages": ["page/index"]
+          "pages": [
+            "page/index"
+          ]
         }
       },
       "platforms": [
