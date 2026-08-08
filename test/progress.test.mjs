@@ -5,6 +5,8 @@ import {
   createClock,
   elapsedSeconds,
   formatTime,
+  legacyBestTimeKey,
+  legacySolvedKey,
   LEVEL_KEY,
   MAX_TIME,
   normalizeCount,
@@ -15,22 +17,41 @@ import {
   updateBestTime,
 } from "../lib/progress.js";
 import { LEVELS } from "../lib/levels.js";
+import { BUILT_IN, GENERATED, SOURCES } from "../lib/sources.js";
 
 describe("storage keys", () => {
-  it("keeps a separate record for every difficulty", () => {
+  it("keeps a separate record for every difficulty and every source", () => {
     const keys = new Set();
     for (let level = 0; level < LEVELS.length; level++) {
-      keys.add(bestTimeKey(level));
-      keys.add(solvedKey(level));
+      for (const source of SOURCES) {
+        keys.add(bestTimeKey(level, source));
+        keys.add(solvedKey(level, source));
+      }
     }
     keys.add(LEVEL_KEY);
-    expect(keys.size).toBe(LEVELS.length * 2 + 1);
+    expect(keys.size).toBe(LEVELS.length * SOURCES.length * 2 + 1);
   });
 
   it("is stable, so an update does not lose a player's records", () => {
     expect(LEVEL_KEY).toBe("level");
-    expect(bestTimeKey(2)).toBe("best_2");
-    expect(solvedKey(2)).toBe("solved_2");
+    expect(bestTimeKey(2, BUILT_IN)).toBe("best_builtin_2");
+    expect(solvedKey(2, GENERATED)).toBe("solved_generated_2");
+  });
+
+  it("still names the keys used before boards had a source", () => {
+    // Everything played then was generated on the watch, so the page reads these
+    // as the generated side's history when the new key is empty.
+    expect(legacyBestTimeKey(2)).toBe("best_2");
+    expect(legacySolvedKey(2)).toBe("solved_2");
+  });
+
+  it("never collides a new key with an old one", () => {
+    for (let level = 0; level < LEVELS.length; level++) {
+      for (const source of SOURCES) {
+        expect(bestTimeKey(level, source)).not.toBe(legacyBestTimeKey(level));
+        expect(solvedKey(level, source)).not.toBe(legacySolvedKey(level));
+      }
+    }
   });
 });
 
