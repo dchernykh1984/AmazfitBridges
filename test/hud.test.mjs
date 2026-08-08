@@ -208,11 +208,11 @@ describe("the screens", () => {
     );
   });
 
-  it("let the difficulty be changed and a board be started", () => {
+  it("let the difficulty and the board source be changed, and a board be started", () => {
     const roles = startRows(menuMetrics(480), true)
       .filter((row) => row.kind === "button")
       .map((row) => row.role);
-    expect(roles).toEqual(["level", "play"]);
+    expect(roles).toEqual(["level", "source", "play"]);
   });
 });
 
