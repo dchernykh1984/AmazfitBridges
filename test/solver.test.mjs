@@ -7,6 +7,7 @@ import {
   isForcedSolvable,
   solvePuzzle,
 } from "../lib/solver.js";
+import { allIslandsSatisfied } from "../lib/puzzle.js";
 import {
   ambiguousPuzzle,
   crossingPuzzle,
@@ -92,6 +93,77 @@ describe("solvePuzzle", () => {
       4
     );
     expect(solvePuzzle(puzzle, { limit: 5 }).count).toBe(0);
+  });
+});
+
+describe("switching a rule off", () => {
+  it("lets a board that only connectivity pins down have several answers", () => {
+    const puzzle = ringPuzzle();
+    expect(solvePuzzle(puzzle, { limit: 9 }).count).toBe(1);
+    const without = solvePuzzle(puzzle, { limit: 9, rules: { connectivity: false } });
+    expect(without.count).toBeGreaterThan(1);
+    // Every one of them still satisfies every island's number - dropping the
+    // rule must widen the answer set, not corrupt it.
+    expect(without.solution).not.toBe(null);
+    expect(allIslandsSatisfied(puzzle, without.solution)).toBe(true);
+  });
+
+  it("lets bridges cross once the crossing rule is off", () => {
+    // The plus board: four islands needing two bridges each, one lane apiece,
+    // and the two lanes cross. It has no answer at all with the rules on.
+    const puzzle = crossingPuzzle();
+    expect(solvePuzzle(puzzle, { limit: 9 }).count).toBe(0);
+
+    // Dropping the crossing rule alone is not enough: the two doubled lanes
+    // leave the board in two separate groups, which connectivity then refuses.
+    expect(solvePuzzle(puzzle, { limit: 9, rules: { crossings: false } }).count).toBe(0);
+
+    const without = solvePuzzle(puzzle, {
+      limit: 9,
+      rules: { crossings: false, connectivity: false },
+    });
+    expect(without.count).toBeGreaterThan(0);
+    expect(allIslandsSatisfied(puzzle, without.solution)).toBe(true);
+  });
+
+  it("changes nothing on a board where neither rule does any work", () => {
+    const puzzle = linePuzzle();
+    const withRules = solvePuzzle(puzzle, { limit: 9 });
+    for (const rules of [{ crossings: false }, { connectivity: false }]) {
+      const without = solvePuzzle(puzzle, { limit: 9, rules });
+      expect(without.count, JSON.stringify(rules)).toBe(withRules.count);
+      expect(without.solution, JSON.stringify(rules)).toEqual(withRules.solution);
+    }
+  });
+
+  it("leaves the answer itself untouched when a rule is switched off", () => {
+    // Only the count may widen; a reported answer must always be a real one.
+    const puzzle = ringPuzzle();
+    const without = solvePuzzle(puzzle, { limit: 1, rules: { connectivity: false } });
+    for (const count of without.solution) {
+      expect(count).toBeGreaterThanOrEqual(0);
+      expect(count).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
+describe("isForcedSolvable with the connectivity argument", () => {
+  it("still refuses a board that genuinely needs a guess", () => {
+    expect(isForcedSolvable(ambiguousPuzzle())).toBe(false);
+    expect(isForcedSolvable(deadlockPuzzle())).toBe(false);
+  });
+
+  it("still accepts a board every step of which is forced", () => {
+    expect(isForcedSolvable(linePuzzle())).toBe(true);
+  });
+
+  it("leaves the board exactly as it found it", () => {
+    // The check applies and undoes whole combinations to see which are viable;
+    // a leak would make a second call disagree with the first.
+    const puzzle = ringPuzzle();
+    const before = isForcedSolvable(puzzle);
+    expect(isForcedSolvable(puzzle)).toBe(before);
+    expect(solvePuzzle(puzzle, { limit: 9 }).count).toBe(1);
   });
 });
 
