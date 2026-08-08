@@ -10,7 +10,7 @@
     },
     "icon": "icon.png",
     "vender": "dchernykh1984",
-    "description": "Hashiwokakero for round Amazfit watches: link the islands with the right number of bridges, drag the map to explore, four difficulties."
+    "description": "Hashiwokakero for round Amazfit watches: link the islands with the right number of bridges, drag the map to explore, four board sizes and a collection of hand-picked puzzles."
   },
   "permissions": [
     "data:os.device.info",
