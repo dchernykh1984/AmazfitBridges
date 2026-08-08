@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { clampLevel, DEFAULT_LEVEL, LEVELS, levelConfig, nextLevel } from "../lib/levels.js";
 
-describe("the difficulty ladder", () => {
-  it("offers several difficulties", () => {
+describe("the sizes on offer", () => {
+  it("offers several sizes", () => {
     expect(LEVELS.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -11,16 +11,15 @@ describe("the difficulty ladder", () => {
       expect(LEVELS[i].islands).toBeGreaterThan(LEVELS[i - 1].islands);
       expect(LEVELS[i].cols).toBeGreaterThanOrEqual(LEVELS[i - 1].cols);
       expect(LEVELS[i].rows).toBeGreaterThanOrEqual(LEVELS[i - 1].rows);
-      expect(LEVELS[i].doubleChance).toBeGreaterThanOrEqual(LEVELS[i - 1].doubleChance);
       expect(LEVELS[i].extraBridges).toBeGreaterThanOrEqual(LEVELS[i - 1].extraBridges);
     }
   });
 
-  it("gives every level a name to look up and a unique id", () => {
-    // That the name resolves to a string in every language is checked where the
-    // translations are, in test/i18n.test.mjs.
+  it("names every size by its own dimensions, and uniquely", () => {
+    // The id is what the start-screen button shows. It reads the same in every
+    // language, which is why there is no translation for it.
     for (const level of LEVELS) {
-      expect(typeof level.label).toBe("string");
+      expect(level.id).toBe(`${level.cols}x${level.rows}`);
     }
     expect(new Set(LEVELS.map((level) => level.id)).size).toBe(LEVELS.length);
   });
@@ -48,11 +47,20 @@ describe("the difficulty ladder", () => {
     }
   });
 
-  it("keeps the chance of a double bridge a probability", () => {
+  it("keeps the share of double bridges a proportion", () => {
     for (const level of LEVELS) {
-      expect(level.doubleChance).toBeGreaterThanOrEqual(0);
-      expect(level.doubleChance).toBeLessThanOrEqual(1);
+      expect(level.doubleShare).toBeGreaterThanOrEqual(0);
+      expect(level.doubleShare).toBeLessThanOrEqual(1);
     }
+  });
+
+  it("samples far more candidates than it keeps, so the best can be picked", () => {
+    for (const level of LEVELS) {
+      expect(level.oversample, level.id).toBeGreaterThan(1);
+    }
+    // The smallest board has the poorest candidate pool, so it needs to look
+    // through the most to find boards where the rules do any work.
+    expect(LEVELS[0].oversample).toBeGreaterThan(LEVELS[LEVELS.length - 1].oversample);
   });
 });
 
