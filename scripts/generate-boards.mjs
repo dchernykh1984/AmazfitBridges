@@ -117,14 +117,12 @@ function buildLevel(level, want, oversample) {
   const seenBoards = new Set();
   const candidates = [];
   const budget = want * oversample;
-  let rejected = 0;
   let seed = BASE_SEED;
 
   for (let tried = 0; tried < budget; tried++) {
     const generated = generatePuzzle(level, seed);
     seed += 1;
     if (!accept(level, generated)) {
-      rejected += 1;
       continue;
     }
 
@@ -135,7 +133,6 @@ function buildLevel(level, want, oversample) {
     }));
     const code = packBoard(islands);
     if (seenBoards.has(code)) {
-      rejected += 1;
       continue;
     }
     seenBoards.add(code);
@@ -145,7 +142,6 @@ function buildLevel(level, want, oversample) {
       // Correct, but the player would never have to use more than one of the
       // game's rules on it. Quantity is not the goal - a smaller collection of
       // boards worth playing beats a full one padded with arithmetic.
-      rejected += 1;
       continue;
     }
 
@@ -177,7 +173,6 @@ function buildLevel(level, want, oversample) {
 
   return {
     boards: boards.map((board) => board.islands),
-    rejected,
     layouts: uses.size,
     considered: candidates.length,
     rules,
