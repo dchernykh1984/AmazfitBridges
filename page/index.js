@@ -6,6 +6,9 @@ import { LocalStorage } from "@zos/storage";
 
 import { bridgeRects, createLayout, hitTest, islandCenter } from "../lib/board-geometry.js";
 import { boxToScreen, centerCamera, needsPanning, panBy, toWorld } from "../lib/camera.js";
+import { unpackBoard } from "../lib/board-format.js";
+import { BUILT_IN_BOARDS } from "../lib/boards.js";
+import { dealBoard, decodeSeen, encodeSeen, markSeen, seenKey } from "../lib/collection.js";
 import { generatePuzzle } from "../lib/generator.js";
 import { createTracker, pointerDown, pointerMove, pointerUp, cancel } from "../lib/gestures.js";
 import {
@@ -24,6 +27,8 @@ import {
   clockSeconds,
   createClock,
   formatTime,
+  legacyBestTimeKey,
+  legacySolvedKey,
   LEVEL_KEY,
   normalizeCount,
   normalizeTime,
@@ -32,7 +37,8 @@ import {
   startClock,
   updateBestTime,
 } from "../lib/progress.js";
-import { remaining } from "../lib/puzzle.js";
+import { buildPuzzle, remaining } from "../lib/puzzle.js";
+import { BUILT_IN, clampSource, nextSource, SOURCE_KEY, sourceLabel } from "../lib/sources.js";
 import {
   canUndo,
   createSession,
@@ -114,8 +120,12 @@ Page({
   state: {
     language: "en",
     level: 0,
+    source: BUILT_IN,
     best: 0,
     solved: 0,
+    // The index of the built-in board being played, so it can be struck off the
+    // list when it is solved and skipped if the collection wraps right after.
+    dealt: -1,
     screen: "start",
     storage: null,
     destroyed: false,
@@ -176,6 +186,7 @@ Page({
 
     this.state.tracker = createTracker({});
     this.state.level = clampLevel(readValue(this.state.storage, LEVEL_KEY));
+    this.state.source = clampSource(readValue(this.state.storage, SOURCE_KEY));
     this.loadRecords();
 
     hmUI.createWidget(hmUI.widget.FILL_RECT, {
@@ -361,6 +372,8 @@ Page({
     const screen = this.state.screen;
     if (role === "level" && screen === "start") {
       this.cycleLevel();
+    } else if (role === "source" && screen === "start") {
+      this.cycleSource();
     } else if (role === "play" && screen === "start") {
       this.startGame();
     } else if (role === "again" && screen === "solved") {
@@ -385,9 +398,33 @@ Page({
     this.showStart();
   },
 
+  // A record that has never been written under the new per-source key falls back
+  // to the one used before boards had a source. Everything played then was
+  // generated on the watch, so only that side inherits.
+  readRecord(key, legacy) {
+    const value = readValue(this.state.storage, key);
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+    return this.state.source === BUILT_IN ? undefined : readValue(this.state.storage, legacy);
+  },
+
   loadRecords() {
-    this.state.best = normalizeTime(readValue(this.state.storage, bestTimeKey(this.state.level)));
-    this.state.solved = normalizeCount(readValue(this.state.storage, solvedKey(this.state.level)));
+    const level = this.state.level;
+    const source = this.state.source;
+    this.state.best = normalizeTime(
+      this.readRecord(bestTimeKey(level, source), legacyBestTimeKey(level))
+    );
+    this.state.solved = normalizeCount(
+      this.readRecord(solvedKey(level, source), legacySolvedKey(level))
+    );
+  },
+
+  cycleSource() {
+    this.state.source = nextSource(this.state.source);
+    writeValue(this.state.storage, SOURCE_KEY, this.state.source);
+    this.loadRecords();
+    this.showStart();
   },
 
   // ---------------------------------------------------------------- screens ----
@@ -408,8 +445,8 @@ Page({
       title: { text: this.text("title"), color: COLOR_TEXT },
       best: { text: this.text("best") + " " + record, color: COLOR_MUTED },
       solved: { text: this.text("solved") + " " + this.state.solved, color: COLOR_MUTED },
-      difficulty: { text: this.text("difficulty"), color: COLOR_MUTED },
       level: { text: this.text(LEVELS[this.state.level].label) },
+      source: { text: this.text(sourceLabel(this.state.source)) },
       play: { text: this.text("play") },
       hint_tap: { text: this.text("hint_tap"), color: COLOR_MUTED },
       hint_drag: { text: this.text("hint_drag"), color: COLOR_MUTED },
@@ -430,25 +467,64 @@ Page({
     this.state.buildTimer = setTimeout(() => this.beginPuzzle(), 40);
   },
 
+  // A board off the shelf. The pool is walked without repeating one until the
+  // whole collection has been played, and the record of what has been played is
+  // written the moment a board is dealt - a board that was looked at and
+  // abandoned has still been seen, and offering it again would feel like the
+  // watch had forgotten.
+  dealBuiltIn() {
+    const level = LEVELS[this.state.level];
+    const codes = BUILT_IN_BOARDS[level.id];
+    if (!codes || codes.length === 0) {
+      return null;
+    }
+
+    const stored = readValue(this.state.storage, seenKey(level.id));
+    const result = dealBoard(decodeSeen(stored, codes.length), Math.random, this.state.dealt);
+    if (result.index < 0) {
+      return null;
+    }
+
+    const islands = unpackBoard(codes[result.index]);
+    if (islands === null) {
+      return null;
+    }
+
+    this.state.dealt = result.index;
+    writeValue(
+      this.state.storage,
+      seenKey(level.id),
+      encodeSeen(markSeen(result.seen, result.index))
+    );
+    return buildPuzzle(islands, level.cols, level.rows);
+  },
+
+  // A board the watch works out for itself. Slower and never seen before by
+  // anyone, which is the whole appeal.
+  rollBoard() {
+    const seed = Date.now() + Math.floor(Math.random() * 0xffff);
+    const generated = generatePuzzle(levelConfig(this.state.level), seed);
+    this.state.dealt = -1;
+    return generated === null ? null : generated.puzzle;
+  },
+
   beginPuzzle() {
     this.state.buildTimer = null;
     if (this.state.destroyed || this.state.screen !== "generating") {
       return;
     }
 
-    const config = levelConfig(this.state.level);
-    const seed = Date.now() + Math.floor(Math.random() * 0xffff);
-    const generated = generatePuzzle(config, seed);
-    if (generated === null) {
-      // Nothing legal came out of the whole retry budget, which should not
-      // happen; showing the menu again beats showing a blank board.
+    const puzzle = this.state.source === BUILT_IN ? this.dealBuiltIn() : this.rollBoard();
+    if (puzzle === null) {
+      // A board could not be produced at all, which should not happen; showing
+      // the menu again beats showing a blank screen.
       this.showStart();
       return;
     }
 
-    this.state.puzzle = generated.puzzle;
-    this.state.session = createSession(generated.puzzle);
-    this.state.layout = createLayout(SCREEN_SIZE, generated.puzzle.cols, generated.puzzle.rows);
+    this.state.puzzle = puzzle;
+    this.state.session = createSession(puzzle);
+    this.state.layout = createLayout(SCREEN_SIZE, puzzle.cols, puzzle.rows);
     this.state.camera = centerCamera(this.state.layout, SCREEN_SIZE);
     this.state.clock = startClock(createClock(), Date.now());
 
@@ -508,10 +584,14 @@ Page({
     const record = updateBestTime(this.state.best, seconds);
     this.state.best = record.best;
     if (record.isRecord) {
-      writeValue(this.state.storage, bestTimeKey(this.state.level), record.best);
+      writeValue(this.state.storage, bestTimeKey(this.state.level, this.state.source), record.best);
     }
     this.state.solved += 1;
-    writeValue(this.state.storage, solvedKey(this.state.level), this.state.solved);
+    writeValue(
+      this.state.storage,
+      solvedKey(this.state.level, this.state.source),
+      this.state.solved
+    );
 
     this.drawMenu(solvedRows(METRICS), {
       well_done: { text: this.text("well_done"), color: COLOR_TEXT },

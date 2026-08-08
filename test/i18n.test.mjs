@@ -18,6 +18,7 @@ import {
 } from "../lib/i18n/index.js";
 import { hudLayout, menuMetrics, pausedRows, solvedRows, startRows } from "../lib/hud.js";
 import { LEVELS } from "../lib/levels.js";
+import { BUILT_IN, GENERATED, sourceLabel, SOURCES } from "../lib/sources.js";
 
 // The language list mirrors the sibling AmazfitRaceStats and AmazfitSerpent
 // apps: the ten Zepp OS exposes as device languages, plus Kazakh.
@@ -117,7 +118,12 @@ describe("every screen has something to say", () => {
     // Two rows are filled in rather than looked up: `record` is a label plus a
     // time, and `level` is whichever difficulty is selected. Everything else is
     // a key in its own right.
-    const substitutes = { record: "best", level: LEVELS[0].label, time: "time" };
+    const substitutes = {
+      record: "best",
+      level: LEVELS[0].label,
+      time: "time",
+      source: sourceLabel(BUILT_IN),
+    };
     for (const role of roles) {
       expect(UI_KEYS, role).toContain(substitutes[role] || role);
     }
@@ -126,6 +132,26 @@ describe("every screen has something to say", () => {
   it("has strings for the heads-up display and the notice while a board builds", () => {
     for (const key of ["undo", "menu", "generating"]) {
       expect(UI_KEYS).toContain(key);
+    }
+  });
+});
+
+describe("the board source", () => {
+  it("names both sources in every language", () => {
+    for (const source of SOURCES) {
+      expect(UI_KEYS).toContain(sourceLabel(source));
+      for (const lang of LANGUAGES) {
+        expect(LABELS[lang][sourceLabel(source)], `${lang}/${source}`).toBeTruthy();
+      }
+    }
+  });
+
+  it("tells the two sources apart on the button face", () => {
+    for (const lang of LANGUAGES) {
+      expect(
+        LABELS[lang][sourceLabel(BUILT_IN)],
+        `${lang} uses one word for both sources`
+      ).not.toBe(LABELS[lang][sourceLabel(GENERATED)]);
     }
   });
 });
