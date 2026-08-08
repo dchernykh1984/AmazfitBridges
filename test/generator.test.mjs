@@ -3,6 +3,7 @@ import { generateCandidate, generatePuzzle } from "../lib/generator.js";
 import { LEVELS } from "../lib/levels.js";
 import { isValidSolution, MAX_BRIDGES, MAX_REQUIRED } from "../lib/puzzle.js";
 import { hasUniqueSolution, isForcedSolvable } from "../lib/solver.js";
+import { isPlayable } from "../lib/playfield.js";
 import { applyEdge, createSession } from "../lib/session.js";
 
 // Enough seeds to catch a layout rule that only breaks now and then, without
@@ -36,6 +37,18 @@ describe.each(LEVELS)("generatePuzzle for $id", (level) => {
         expect(island.row).toBeGreaterThanOrEqual(0);
         expect(island.col).toBeLessThan(level.cols);
         expect(island.row).toBeLessThan(level.rows);
+      }
+    }
+  });
+
+  it("keeps every island inside the round playfield", () => {
+    // Otherwise it is drawn where a round watch has no glass.
+    for (const board of boards) {
+      for (const island of board.puzzle.islands) {
+        expect(
+          isPlayable(level.cols, level.rows, island.col, island.row),
+          `${level.id} ${island.col},${island.row}`
+        ).toBe(true);
       }
     }
   });
