@@ -413,7 +413,10 @@ Page({
 
   // A record that has never been written under the new per-source key falls back
   // to the one used before boards had a source. Everything played then was
-  // generated on the watch, so only that side inherits.
+  // generated on the watch, so only that side inherits - which does mean an
+  // upgrading player opens on Built-in, the default, and sees a blank record
+  // until they switch to Random. Their history is not lost, only filed under
+  // the source it was actually earned on.
   readRecord(key, legacy) {
     const value = readValue(this.state.storage, key);
     if (value !== undefined && value !== null && value !== "") {
