@@ -131,8 +131,10 @@ Page({
     source: BUILT_IN,
     best: 0,
     solved: 0,
-    // The index of the built-in board being played, so it can be struck off the
-    // list when it is solved and skipped if the collection wraps right after.
+    // The index of the built-in board being played, within the current size's
+    // collection. It is struck off the moment it is dealt, not when it is
+    // solved; this field exists only so that a collection which wraps on the
+    // very next deal does not hand the same board straight back.
     dealt: -1,
     screen: "start",
     storage: null,
@@ -401,6 +403,9 @@ Page({
 
   cycleLevel() {
     this.state.level = nextLevel(this.state.level);
+    // The index belongs to the collection just left, and every collection is a
+    // different length; carrying it over would skip an unrelated board.
+    this.state.dealt = -1;
     writeValue(this.state.storage, LEVEL_KEY, this.state.level);
     this.loadRecords();
     this.showStart();
@@ -430,6 +435,7 @@ Page({
 
   cycleSource() {
     this.state.source = nextSource(this.state.source);
+    this.state.dealt = -1;
     writeValue(this.state.storage, SOURCE_KEY, this.state.source);
     this.loadRecords();
     this.showStart();
