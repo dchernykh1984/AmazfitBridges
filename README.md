@@ -48,8 +48,11 @@ the whole collection has been played; when it runs dry the slate is wiped and th
 finished is skipped in the fresh round.
 
 **Random** builds a board on the wrist instead. Nobody needs that for quality - the built-in
-boards are better - but a board nobody has ever seen is worth something on its own. It still
-has to have one answer reachable without guessing; only the extra selection is skipped.
+boards are better - but a board nobody has ever seen is worth something on its own. The
+on-watch generator tries for the same guarantees and almost always gets them, but it works to
+a time budget: if fourteen attempts all fail to produce a board it can prove, it plays the
+last valid one anyway rather than leaving the screen empty. Only the built-in collection is
+proved without exception.
 
 Records are kept apart for the two, because a curated board and one the watch happened to
 roll are not the same challenge.
@@ -61,10 +64,12 @@ Bigger boards do turn out richer, but that falls out of the space being larger.
 
 ## What makes a board worth shipping
 
-Every built-in board has to clear two hard gates and then win a competition.
+Every built-in board has to clear some hard gates and then win a competition.
 
-The gates: exactly one solution, reachable by deduction alone; every island inside the round
-playfield; no empty quadrant.
+The gates: exactly one solution; that solution reachable by deduction alone; every island
+inside the round playfield; islands reaching most of the way across the board with no empty
+quadrant; and no board repeated, by shape more than three times or by layout-and-numbers at
+all.
 
 The competition: the generator builds far more boards than it needs - forty to three hundred
 candidates per board kept - measures how many of the game's three rules actually do any work
@@ -202,7 +207,7 @@ They are kept in step from `package.json`, which is the one `release-please` doe
 - `release-please` writes `version.name` into `app.json` in the release PR itself
   (`extra-files` in `release-please-config.json`), so the repository never claims a
   version it did not release.
-- `npm run version:sync` (`scripts/sync-app-version.mjs`, the one thing in `scripts/`)
+- `npm run version:sync` (`scripts/sync-app-version.mjs`, the version script in `scripts/`)
   writes both numbers, deriving the code as `major * 10000 + minor * 100 + patch`. The
   release build runs it before `zeus build`, and so does `npm run build`, so a bundle
   built in CI and one built on a laptop carry the same numbers. It refuses a version it
