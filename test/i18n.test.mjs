@@ -100,11 +100,13 @@ describe("the label budgets", () => {
 });
 
 describe("every screen has something to say", () => {
-  it("names every difficulty in every language", () => {
+  it("needs no translation for the sizes, because they are written as numbers", () => {
+    // "9x9" reads the same in every language, so the start-screen button shows
+    // the size itself and there is nothing here to keep in step with it.
     for (const level of LEVELS) {
-      expect(UI_KEYS, level.label).toContain(level.label);
-      for (const lang of LANGUAGES) {
-        expect(LABELS[lang][level.label], `${lang}/${level.label}`).toBeTruthy();
+      expect(level.id).toMatch(/^\d+x\d+$/);
+      for (const key of UI_KEYS) {
+        expect(key, `${key} looks like a leftover size label`).not.toMatch(/^level_/);
       }
     }
   });
@@ -118,13 +120,14 @@ describe("every screen has something to say", () => {
     // Two rows are filled in rather than looked up: `record` is a label plus a
     // time, and `level` is whichever difficulty is selected. Everything else is
     // a key in its own right.
-    const substitutes = {
-      record: "best",
-      level: LEVELS[0].label,
-      time: "time",
-      source: sourceLabel(BUILT_IN),
-    };
+    // Three rows are filled in rather than looked up: `record` is a label plus a
+    // time, `level` is the chosen size written as digits, and `source` shows
+    // whichever source is selected. Everything else is a key in its own right.
+    const substitutes = { record: "best", time: "time", source: sourceLabel(BUILT_IN) };
     for (const role of roles) {
+      if (role === "level") {
+        continue;
+      }
       expect(UI_KEYS, role).toContain(substitutes[role] || role);
     }
   });
