@@ -35,7 +35,7 @@ for (const level of LEVELS) {
   if (collection.cols !== level.cols || collection.rows !== level.rows) {
     console.error(
       `${level.id}: boards are ${collection.cols}x${collection.rows}, ` +
-        `but the difficulty is ${level.cols}x${level.rows}`
+        `but the size is ${level.cols}x${level.rows}`
     );
     process.exit(1);
   }

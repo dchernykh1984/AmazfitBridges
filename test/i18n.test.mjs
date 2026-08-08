@@ -117,9 +117,6 @@ describe("every screen has something to say", () => {
       .filter((row) => row.role !== undefined)
       .map((row) => row.role);
 
-    // Two rows are filled in rather than looked up: `record` is a label plus a
-    // time, and `level` is whichever difficulty is selected. Everything else is
-    // a key in its own right.
     // Three rows are filled in rather than looked up: `record` is a label plus a
     // time, `level` is the chosen size written as digits, and `source` shows
     // whichever source is selected. Everything else is a key in its own right.
