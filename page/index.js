@@ -97,11 +97,19 @@ const memory = {};
 function readValue(storage, key) {
   if (storage) {
     try {
-      return storage.getItem(key);
+      const stored = storage.getItem(key);
+      if (stored !== undefined && stored !== null && stored !== "") {
+        return stored;
+      }
     } catch {
       // Fall through to the in-memory copy.
     }
   }
+  // Also reached when the read worked but found nothing, which is what a watch
+  // whose writes are failing looks like. Preferring storage over memory there
+  // would quietly undo every write of the session - and the record of which
+  // boards have been dealt is kept nowhere else, so the collection would start
+  // repeating itself within a sitting.
   return memory[key];
 }
 
