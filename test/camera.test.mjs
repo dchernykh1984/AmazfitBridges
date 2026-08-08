@@ -14,6 +14,7 @@ import {
   toWorld,
 } from "../lib/camera.js";
 import { LEVELS } from "../lib/levels.js";
+import { playableCells } from "../lib/playfield.js";
 import { ROUND_SIZES } from "./fixtures.mjs";
 
 // Put a world point as near the middle of the screen as the limits allow. The
@@ -195,28 +196,35 @@ describe("needsPanning", () => {
     expect(needsPanning(createLayout(VIEW, 3, 3), VIEW)).toBe(false);
   });
 
-  it("says yes for every board the game actually deals", () => {
-    // Even the smallest one is a square on a round screen, so its corners start
-    // out under the bezel and the drag hint is worth showing.
+  it("says no for the smallest board, which now fits the glass whole", () => {
+    // Restricting islands to the disc took the grid corners out of play, and
+    // with them the only part of a 7x7 that was ever off screen.
     for (const size of ROUND_SIZES) {
-      for (const level of LEVELS) {
+      const layout = createLayout(size, LEVELS[0].cols, LEVELS[0].rows);
+      expect(needsPanning(layout, size), `${LEVELS[0].id} on ${size}`).toBe(false);
+    }
+  });
+
+  it("says yes for every board bigger than the smallest", () => {
+    for (const size of ROUND_SIZES) {
+      for (const level of LEVELS.slice(1)) {
         const layout = createLayout(size, level.cols, level.rows);
         expect(needsPanning(layout, size), `${level.id} on ${size}`).toBe(true);
       }
     }
   });
 
-  it("agrees with whether a corner island is really off screen to begin with", () => {
+  it("agrees with whether a real board has anything off screen at rest", () => {
     for (const size of ROUND_SIZES) {
-      for (const cols of [2, 3, 4, 5, 6, 7, 9, 11, 13]) {
-        const layout = createLayout(size, cols, cols);
+      for (const level of LEVELS) {
+        const layout = createLayout(size, level.cols, level.rows);
         const camera = centerCamera(layout, size);
-        const corner = cellCenter(layout, cols - 1, cols - 1);
-        const screen = toScreen(camera, corner.x, corner.y);
-        const distance = Math.hypot(screen.x - size / 2, screen.y - size / 2);
-        expect(needsPanning(layout, size), `${cols} cols on ${size}`).toBe(
-          distance + layout.radius > size / 2
-        );
+        const hidden = playableCells(level.cols, level.rows).some((cell) => {
+          const point = cellCenter(layout, cell.col, cell.row);
+          const screen = toScreen(camera, point.x, point.y);
+          return !discIsOnScreen(size, screen.x, screen.y, layout.radius);
+        });
+        expect(needsPanning(layout, size), `${level.id} on ${size}`).toBe(hidden);
       }
     }
   });
