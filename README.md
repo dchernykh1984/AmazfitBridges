@@ -36,11 +36,68 @@ by the tests.
 - An island turns **green** when it has all the bridges it needs, and lets go of the
   selection on its own so the next tap is free for somewhere else.
 - **Undo** takes back one change at a time; **Menu** pauses, restarts the board, or goes
-  back to the difficulty screen. The clock stops while the menu is open.
+  back to the start screen. The clock stops while the menu is open.
 
-Four difficulties - Easy, Medium, Hard and Expert - differ in board size, how many islands
-there are, and how often bridges are doubled. The fastest time and the number of boards
-solved are remembered for each one separately.
+## Where the boards come from
+
+Two sources, chosen with a button on the start screen.
+
+**Built-in** deals from a collection generated on a computer and checked twice: 1671 boards
+across four sizes. A board is dealt at random and struck off, so none comes round again until
+the whole collection has been played; when it runs dry the slate is wiped and the board just
+finished is skipped in the fresh round.
+
+**Random** builds a board on the wrist instead. Nobody needs that for quality - the built-in
+boards are better - but a board nobody has ever seen is worth something on its own. It still
+has to have one answer reachable without guessing; only the extra selection is skipped.
+
+Records are kept apart for the two, because a curated board and one the watch happened to
+roll are not the same challenge.
+
+Boards are named by **size** - 7x7, 9x9, 11x11, 13x13 - rather than by difficulty. An audit of
+an earlier collection found a 13x13 needed exactly the same reasoning as a 7x7, only more of
+it, so a label promising harder _thinking_ was promising something the boards did not deliver.
+Bigger boards do turn out richer, but that falls out of the space being larger.
+
+## What makes a board worth shipping
+
+Every built-in board has to clear two hard gates and then win a competition.
+
+The gates: exactly one solution, reachable by deduction alone; every island inside the round
+playfield; no empty quadrant.
+
+The competition: the generator builds far more boards than it needs - forty to three hundred
+candidates per board kept - measures how many of the game's three rules actually do any work
+on each, and keeps the best. "Does a rule do work" has an exact meaning: switch the rule off
+in the solver and see whether the answer stops being unique. Every shipped board uses at least
+two rules, so none of them is arithmetic wearing a puzzle's hat.
+
+The smallest size is the honest casualty: a 7x7 disc holds only 57 island layouts on which the
+no-crossing rule does any real work, so it ships 171 boards rather than a padded thousand.
+
+| size  | boards | grid  |
+| ----- | ------ | ----- |
+| 7x7   | 171    | 7x7   |
+| 9x9   | 700    | 9x9   |
+| 11x11 | 500    | 11x11 |
+| 13x13 | 300    | 13x13 |
+
+## Changing the boards
+
+The grids in `boards/` are the source of truth and are meant to be read in a diff.
+`lib/boards.js` is generated from them and committed too, so no build can ever produce a
+bundle with no boards in it; a unit test re-packs the grids and compares.
+
+```bash
+npm run boards        # rebuild the collection (a few minutes)
+npm run pack          # compile boards/*.txt into lib/boards.js
+npm run boards:check  # re-prove every shipped board
+npm test              # the same proof, plus everything else
+```
+
+To make the boards better, change the generator rather than the files: `lib/generator.js`
+builds them, `lib/board-quality.js` decides which are worth keeping, `lib/levels.js` holds the
+sizes and sample factors. Then regenerate, repack, and commit all three together.
 
 ## How it is put together
 
@@ -58,7 +115,13 @@ and is tested under Node:
 | `lib/camera.js`         | The pannable map and how far it may be dragged                      |
 | `lib/gestures.js`       | Telling a tap from a drag                                           |
 | `lib/hud.js`            | Where the controls sit on a round screen, and which one was pressed |
-| `lib/levels.js`         | The difficulty ladder                                               |
+| `lib/levels.js`         | The sizes on offer and how hard to search for their boards          |
+| `lib/board-quality.js`  | How many of the game's rules a board actually makes you use         |
+| `lib/board-format.js`   | A board as a readable grid, and as a packed code                    |
+| `lib/boards.js`         | The shipped collection, generated from `boards/`                    |
+| `lib/collection.js`     | Dealing built-in boards without repeats                             |
+| `lib/sources.js`        | Built-in boards or one rolled on the watch                          |
+| `lib/playfield.js`      | Which cells of the grid a round screen can actually show            |
 | `lib/progress.js`       | Best times, boards solved, and the pausable clock                   |
 | `lib/i18n/`             | The on-watch strings, in eleven languages                           |
 
