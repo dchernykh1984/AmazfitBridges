@@ -41,6 +41,11 @@ for (const level of LEVELS) {
   }
 
   const codes = collection.boards.map((islands) => packBoard(islands));
+  const empty = codes.indexOf(null);
+  if (empty !== -1) {
+    console.error(`${level.id}: board ${empty} has no islands on it`);
+    process.exit(1);
+  }
   total += codes.length;
   // The size is the key, and `7x7` is not a name JavaScript accepts bare.
   sections.push(
