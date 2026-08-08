@@ -1,12 +1,13 @@
 // Builds the collection of boards the app ships with.
 //
 //   npm run boards            regenerate every difficulty
-//   npm run boards -- --level easy --count 50
+//   npm run boards -- --level 9x9 --count 50
 //
-// Run by hand, not by CI. Generating and proving a board takes about a
-// millisecond, so the whole collection is a few seconds of work - but it is the
-// kind of work whose output is reviewed rather than trusted, and a CI job that
-// silently rewrote the boards on every push would defeat that.
+// Run by hand, not by CI. Building and proving one board takes about a
+// millisecond, but far more are built than are kept - see the oversample factor
+// in lib/levels.js - so the whole collection is a few minutes of work. It is
+// also the kind of work whose output is reviewed rather than trusted, and a CI
+// job that silently rewrote the boards on every push would defeat that.
 //
 // Every board written here has already been proved to have exactly one solution
 // reachable without guessing (lib/generator.js does that), and is checked once
