@@ -105,9 +105,9 @@ describe("every screen has something to say", () => {
     // the size itself and there is nothing here to keep in step with it.
     for (const level of LEVELS) {
       expect(level.id).toMatch(/^\d+x\d+$/);
-      for (const key of UI_KEYS) {
-        expect(key, `${key} looks like a leftover size label`).not.toMatch(/^level_/);
-      }
+    }
+    for (const key of UI_KEYS) {
+      expect(key, `${key} looks like a leftover size label`).not.toMatch(/^level_/);
     }
   });
 

@@ -86,7 +86,7 @@ describe.each(LEVELS)("the boards shipped for $id", (level) => {
   });
 
   it("has exactly one solution for every board, reachable without guessing", () => {
-    // The full sweep, not a sample: proving all 2500 shipped boards takes well
+    // The full sweep, not a sample: proving every shipped board takes well
     // under a second, so there is no reason to trust the generator instead.
     for (let i = 0; i < collection.boards.length; i++) {
       const puzzle = buildPuzzle(collection.boards[i], level.cols, level.rows);
