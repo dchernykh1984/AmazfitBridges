@@ -9,3 +9,4 @@ CHANGELOG.md
 # line. Formatting it here would fail the release PR's own checks over a file
 # nobody hand-formats anyway.
 app.json
+lib/boards.js
