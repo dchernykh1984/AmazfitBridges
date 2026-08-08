@@ -37,6 +37,17 @@ for (const level of LEVELS) {
     failures += 1;
     continue;
   }
+  // The header states how many boards the file was written with. Nothing else
+  // in the pipeline pins the size of a collection - every other check is
+  // relative - so a file that lost most of its boards would otherwise pass
+  // everything while quietly making the README false.
+  const declared = /(\d+) boards/.exec(text);
+  if (declared !== null && Number(declared[1]) !== collection.boards.length) {
+    console.error(
+      `${level.id}: header says ${declared[1]} boards, file holds ${collection.boards.length}`
+    );
+    failures += 1;
+  }
   if (collection.boards.length === 0 || collection.boards.length > BOARD_COUNTS[level.id]) {
     console.error(
       `${level.id}: ${collection.boards.length} boards, expected between 1 and ${BOARD_COUNTS[level.id]}`
