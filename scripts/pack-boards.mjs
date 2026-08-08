@@ -42,7 +42,10 @@ for (const level of LEVELS) {
 
   const codes = collection.boards.map((islands) => packBoard(islands));
   total += codes.length;
-  sections.push(`  ${level.id}: [\n` + codes.map((code) => `    "${code}",`).join("\n") + "\n  ],");
+  // The size is the key, and `7x7` is not a name JavaScript accepts bare.
+  sections.push(
+    `  "${level.id}": [\n` + codes.map((code) => `    "${code}",`).join("\n") + "\n  ],"
+  );
   console.log(
     `${level.id.padEnd(7)} ${String(codes.length).padStart(5)} boards packed  ` +
       `${(codes.join("").length / 1024).toFixed(0)} KB of codes`
