@@ -445,7 +445,7 @@ Page({
       title: { text: this.text("title"), color: COLOR_TEXT },
       best: { text: this.text("best") + " " + record, color: COLOR_MUTED },
       solved: { text: this.text("solved") + " " + this.state.solved, color: COLOR_MUTED },
-      level: { text: this.text(LEVELS[this.state.level].label) },
+      level: { text: LEVELS[this.state.level].id },
       source: { text: this.text(sourceLabel(this.state.source)) },
       play: { text: this.text("play") },
       hint_tap: { text: this.text("hint_tap"), color: COLOR_MUTED },

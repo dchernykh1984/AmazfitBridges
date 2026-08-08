@@ -38,7 +38,7 @@ describe("encodeSeen and decodeSeen", () => {
   });
 
   it("round-trips every board of a real collection", () => {
-    const seen = emptySeen(BOARD_COUNTS.easy);
+    const seen = emptySeen(BOARD_COUNTS[LEVELS[0].id]);
     for (let i = 0; i < seen.length; i += 7) {
       seen[i] = true;
     }
@@ -186,6 +186,6 @@ describe("seenKey", () => {
   });
 
   it("is stable, so an update does not forget what a player has played", () => {
-    expect(seenKey("easy")).toBe("seen_easy");
+    expect(seenKey("9x9")).toBe("seen_9x9");
   });
 });
