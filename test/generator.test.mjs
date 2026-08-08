@@ -103,6 +103,26 @@ describe.each(LEVELS)("generatePuzzle for $id", (level) => {
     }
   });
 
+  it("uses both kinds of bridge rather than doubling everything", () => {
+    // The collection once came out 88 per cent double bridges, which wastes the
+    // one-or-two distinction that is half the game. Closing loops before
+    // doubling anything is what fixed it.
+    let singles = 0;
+    let doubles = 0;
+    for (const board of boards) {
+      for (const count of board.solution) {
+        if (count === 1) {
+          singles += 1;
+        } else if (count === 2) {
+          doubles += 1;
+        }
+      }
+    }
+    expect(singles).toBeGreaterThan(0);
+    expect(doubles).toBeGreaterThan(0);
+    expect(doubles / (singles + doubles), `${level.id} is nearly all doubles`).toBeLessThan(0.7);
+  });
+
   it("has exactly one answer, reachable without guessing", () => {
     for (const board of boards) {
       expect(board.unique).toBe(true);
