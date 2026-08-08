@@ -15,7 +15,7 @@ import { decodeCollection, packBoard } from "../lib/board-format.js";
 import { BOARD_COUNTS, LEVELS } from "../lib/levels.js";
 import { buildPuzzle } from "../lib/puzzle.js";
 import { isPlayable } from "../lib/playfield.js";
-import { hasUniqueSolution, isForcedSolvable, solvePuzzle } from "../lib/solver.js";
+import { isForcedSolvable, solvePuzzle } from "../lib/solver.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
@@ -59,17 +59,19 @@ for (const level of LEVELS) {
   for (let i = 0; i < collection.boards.length; i++) {
     const islands = collection.boards[i];
 
+    if (islands.length < level.minIslands) {
+      complain(level, i, `has only ${islands.length} islands`);
+      continue;
+    }
+
+    // After the islands check, so that an island-free grid is reported as empty
+    // rather than as a duplicate of the last island-free grid.
     const code = packBoard(islands);
     if (seen.has(code)) {
       complain(level, i, "is a duplicate of an earlier board");
       continue;
     }
     seen.add(code);
-
-    if (islands.length < level.minIslands) {
-      complain(level, i, `has only ${islands.length} islands`);
-      continue;
-    }
     const stray = islands.find(
       (island) => !isPlayable(level.cols, level.rows, island.col, island.row)
     );
@@ -88,7 +90,9 @@ for (const level of LEVELS) {
       complain(level, i, `has ${solved.count} solutions`);
       continue;
     }
-    if (!hasUniqueSolution(puzzle, level.maxNodes) || !isForcedSolvable(puzzle)) {
+    // Uniqueness is already settled by the solve above; what is left to check
+    // is that the answer can be reached without guessing.
+    if (!isForcedSolvable(puzzle)) {
       complain(level, i, "cannot be solved by deduction alone");
     }
   }
