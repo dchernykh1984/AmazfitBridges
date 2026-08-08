@@ -15,7 +15,10 @@
     "version:check": "node scripts/sync-app-version.mjs --check",
     "dev": "npx --yes @zeppos/zeus-cli@1.9.2 dev",
     "preview": "npx --yes @zeppos/zeus-cli@1.9.2 preview",
-    "build": "npm run version:sync && npx --yes @zeppos/zeus-cli@1.9.2 build"
+    "build": "npm run version:sync && npx --yes @zeppos/zeus-cli@1.9.2 build",
+    "boards": "node scripts/generate-boards.mjs",
+    "boards:check": "node scripts/validate-boards.mjs",
+    "pack": "node scripts/pack-boards.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
