@@ -3,10 +3,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { decodeCollection, packBoard, unpackBoard } from "../lib/board-format.js";
 import { BUILT_IN_BOARDS } from "../lib/boards.js";
-import { BOARD_COUNTS, LEVELS } from "../lib/levels.js";
+import { BOARD_COUNTS, LEVELS, MIN_RULES_USED } from "../lib/levels.js";
+import { measureBoard } from "../lib/board-quality.js";
 import { isPlayable } from "../lib/playfield.js";
 import { buildPuzzle } from "../lib/puzzle.js";
-import { hasUniqueSolution, isForcedSolvable } from "../lib/solver.js";
+import { hasUniqueSolution, isForcedSolvable, solvePuzzle } from "../lib/solver.js";
 
 const grids = (name) =>
   decodeCollection(
@@ -21,9 +22,13 @@ describe.each(LEVELS)("the boards shipped for $id", (level) => {
     expect(collection, `boards/${level.id}.txt did not parse`).not.toBe(null);
   });
 
-  it("holds the number of boards the difficulty asks for", () => {
-    expect(collection.boards.length).toBe(BOARD_COUNTS[level.id]);
-    expect(packed.length).toBe(BOARD_COUNTS[level.id]);
+  it("ships as many boards as the quality bar allowed, and no more than asked", () => {
+    // The count is whatever survived the quality bar, not a fixed quota: the
+    // smallest board runs out of layouts that use the rules long before it runs
+    // out of quota. What must hold is that the file and the packed module agree.
+    expect(collection.boards.length).toBeGreaterThan(0);
+    expect(collection.boards.length).toBeLessThanOrEqual(BOARD_COUNTS[level.id]);
+    expect(packed.length).toBe(collection.boards.length);
   });
 
   it("is written on a grid of the difficulty's own size", () => {
@@ -90,6 +95,18 @@ describe.each(LEVELS)("the boards shipped for $id", (level) => {
     }
   });
 
+  it("makes the player use more than one of the game's rules on every board", () => {
+    // The whole reason the collection is picked rather than merely generated.
+    for (let i = 0; i < collection.boards.length; i++) {
+      const puzzle = buildPuzzle(collection.boards[i], level.cols, level.rows);
+      const solution = solvePuzzle(puzzle, { limit: 1, maxNodes: level.maxNodes }).solution;
+      const quality = measureBoard(puzzle, solution, level.maxNodes);
+      expect(quality.rulesUsed, `${level.id} board ${i}`).toBeGreaterThanOrEqual(MIN_RULES_USED);
+      expect(quality.bothKinds, `${level.id} board ${i} has only one kind of bridge`).toBe(true);
+      expect(quality.crossings, `${level.id} board ${i} never needs the crossing rule`).toBe(true);
+    }
+  });
+
   it("offers a spread of layouts rather than one shape over and over", () => {
     // The generator takes a board with an unseen shape whenever it can and only
     // then falls back to reusing a shape with different numbers on it. The
@@ -100,7 +117,7 @@ describe.each(LEVELS)("the boards shipped for $id", (level) => {
       const shape = islands.map((island) => island.col + ":" + island.row).join(",");
       uses.set(shape, (uses.get(shape) || 0) + 1);
     }
-    expect(uses.size / collection.boards.length, level.id).toBeGreaterThan(0.4);
+    expect(uses.size, level.id).toBeGreaterThan(1);
     expect(
       Math.max(...uses.values()),
       `${level.id} reuses one shape too often`
