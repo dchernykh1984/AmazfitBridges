@@ -19,7 +19,8 @@ import { dirname, join } from "node:path";
 
 import { encodeCollection, packBoard } from "../lib/board-format.js";
 import { generatePuzzle } from "../lib/generator.js";
-import { BOARD_COUNTS, LEVELS } from "../lib/levels.js";
+import { BOARD_COUNTS, LEVELS, MIN_RULES_USED } from "../lib/levels.js";
+import { compareBoards, measureBoard } from "../lib/board-quality.js";
 import { isValidSolution } from "../lib/puzzle.js";
 import { isForcedSolvable, hasUniqueSolution } from "../lib/solver.js";
 
@@ -31,12 +32,14 @@ const BOARDS_DIR = join(HERE, "..", "boards");
 const BASE_SEED = 20260808;
 
 function parseArgs(argv) {
-  const args = { level: null, count: null };
+  const args = { level: null, count: null, oversample: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--level") {
       args.level = argv[i + 1];
     } else if (argv[i] === "--count") {
       args.count = Number(argv[i + 1]);
+    } else if (argv[i] === "--oversample") {
+      args.oversample = Number(argv[i + 1]);
     }
   }
   return args;
@@ -96,59 +99,88 @@ function layoutOf(islands) {
   return islands.map((island) => island.col + ":" + island.row).join(",");
 }
 
-// How many boards may share one shape. The smallest difficulty runs out of
-// shapes long before it runs out of quota, so some reuse is unavoidable - but a
-// shape that came round eleven times in a thousand boards is a collection that
-// feels repetitive, whatever the numbers on it say.
+// How many boards may share one shape. The smallest board runs out of shapes
+// long before it runs out of quota, so some reuse is unavoidable - but a shape
+// that comes round a dozen times reads as a repetitive collection whatever the
+// numbers on it say.
 const MAX_SHAPE_USES = 3;
 
-// Fill the quota in two passes. The first takes only boards whose shape has not
-// been seen before, so the collection is as varied as the board size allows; the
-// second tops it up with boards that reuse a shape but carry different numbers -
-// still a different puzzle to solve, just a familiar picture - and never lets one
-// shape appear more than MAX_SHAPE_USES times.
-function buildLevel(level, count) {
+// Build far more boards than are wanted, then keep the best of them.
+//
+// This is what turns "interesting" from a threshold into a competition. A
+// threshold has to be set per size by hand and is either unreachable on the small
+// boards or toothless on the large ones; a competition adapts on its own, because
+// the 13x13 candidate pool is simply richer than the 7x7 one. The gradient the
+// player feels between sizes is a consequence of that, not of any number here.
+function buildLevel(level, want, oversample) {
   const seenBoards = new Set();
-  const layoutUses = new Map();
-  const boards = [];
+  const candidates = [];
+  const budget = want * oversample;
   let rejected = 0;
   let seed = BASE_SEED;
-  let tried = 0;
 
-  const take = (requireNewLayout, budget) => {
-    const until = tried + budget;
-    while (boards.length < count && tried < until) {
-      const generated = generatePuzzle(level, seed);
-      seed += 1;
-      tried += 1;
-      if (!accept(level, generated)) {
-        rejected += 1;
-        continue;
-      }
-
-      const islands = generated.puzzle.islands.map((island) => ({
-        col: island.col,
-        row: island.row,
-        required: island.required,
-      }));
-      const code = packBoard(islands);
-      const layout = layoutOf(islands);
-      const used = layoutUses.get(layout) || 0;
-      if (seenBoards.has(code) || used >= (requireNewLayout ? 1 : MAX_SHAPE_USES)) {
-        rejected += 1;
-        continue;
-      }
-
-      seenBoards.add(code);
-      layoutUses.set(layout, used + 1);
-      boards.push(islands);
+  for (let tried = 0; tried < budget; tried++) {
+    const generated = generatePuzzle(level, seed);
+    seed += 1;
+    if (!accept(level, generated)) {
+      rejected += 1;
+      continue;
     }
+
+    const islands = generated.puzzle.islands.map((island) => ({
+      col: island.col,
+      row: island.row,
+      required: island.required,
+    }));
+    const code = packBoard(islands);
+    if (seenBoards.has(code)) {
+      rejected += 1;
+      continue;
+    }
+    seenBoards.add(code);
+
+    const quality = measureBoard(generated.puzzle, generated.solution, level.maxNodes);
+    if (quality.rulesUsed < MIN_RULES_USED) {
+      // Correct, but the player would never have to use more than one of the
+      // game's rules on it. Quantity is not the goal - a smaller collection of
+      // boards worth playing beats a full one padded with arithmetic.
+      rejected += 1;
+      continue;
+    }
+
+    candidates.push({ islands, code, layout: layoutOf(islands), quality });
+  }
+
+  // Best first, with the packed code breaking any remaining tie so that the same
+  // seed always produces byte-identical files.
+  candidates.sort((a, b) => compareBoards(a.quality, b.quality) || (a.code < b.code ? -1 : 1));
+
+  // Take the best, but never let one shape crowd the collection: without this the
+  // top of the ranking clusters on the handful of layouts that happen to admit a
+  // crossing, and a technically excellent collection looks repetitive.
+  const uses = new Map();
+  const boards = [];
+  for (let i = 0; i < candidates.length && boards.length < want; i++) {
+    const used = uses.get(candidates[i].layout) || 0;
+    if (used >= MAX_SHAPE_USES) {
+      continue;
+    }
+    uses.set(candidates[i].layout, used + 1);
+    boards.push(candidates[i]);
+  }
+
+  const rules = [0, 0, 0, 0];
+  for (const board of boards) {
+    rules[board.quality.rulesUsed] += 1;
+  }
+
+  return {
+    boards: boards.map((board) => board.islands),
+    rejected,
+    layouts: uses.size,
+    considered: candidates.length,
+    rules,
   };
-
-  take(true, count * 30);
-  take(false, count * 30);
-
-  return { boards, rejected, tried, layouts: layoutUses.size };
 }
 
 const args = parseArgs(process.argv.slice(2));
@@ -163,27 +195,30 @@ mkdirSync(BOARDS_DIR, { recursive: true });
 for (const level of chosen) {
   const want = args.count || BOARD_COUNTS[level.id];
   const started = Date.now();
-  const { boards, rejected, tried, layouts } = buildLevel(level, want);
+  const { boards, layouts, considered, rules } = buildLevel(
+    level,
+    want,
+    args.oversample || level.oversample
+  );
 
-  if (boards.length < want) {
-    console.error(
-      `${level.id}: only produced ${boards.length} of ${want} boards after ${tried} seeds`
-    );
+  if (boards.length === 0) {
+    console.error(`${level.id}: produced no boards at all`);
     process.exit(1);
   }
 
   const text = encodeCollection(boards, level.cols, level.rows, [
-    `Island Bridges boards - ${level.id} (${level.cols}x${level.rows})`,
+    `Island Bridges boards - ${level.id}`,
     "GENERATED by scripts/generate-boards.mjs - do not edit by hand",
     `seed ${BASE_SEED}, ${boards.length} boards, every one with a single solution`,
-    "reachable by deduction alone",
+    "reachable by deduction alone, picked as the best of many candidates",
   ]);
 
   const file = join(BOARDS_DIR, `${level.id}.txt`);
   writeFileSync(file, text, "utf8");
   console.log(
-    `${level.id.padEnd(7)} ${String(boards.length).padStart(5)} boards  ${String(layouts).padStart(5)} shapes  ` +
-      `${String(rejected).padStart(4)} rejected  ${((Date.now() - started) / 1000).toFixed(1)}s  ` +
-      `${(text.length / 1024).toFixed(0)} KB`
+    `${level.id.padEnd(6)} kept ${String(boards.length).padStart(5)} of ${String(considered).padStart(6)} candidates  ` +
+      `${String(layouts).padStart(5)} shapes  rules used 3/2/1/0: ` +
+      `${rules[3]}/${rules[2]}/${rules[1]}/${rules[0]}  ` +
+      `${((Date.now() - started) / 1000).toFixed(0)}s  ${(text.length / 1024).toFixed(0)} KB`
   );
 }

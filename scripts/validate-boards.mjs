@@ -37,9 +37,9 @@ for (const level of LEVELS) {
     failures += 1;
     continue;
   }
-  if (collection.boards.length !== BOARD_COUNTS[level.id]) {
+  if (collection.boards.length === 0 || collection.boards.length > BOARD_COUNTS[level.id]) {
     console.error(
-      `${level.id}: ${collection.boards.length} boards, expected ${BOARD_COUNTS[level.id]}`
+      `${level.id}: ${collection.boards.length} boards, expected between 1 and ${BOARD_COUNTS[level.id]}`
     );
     failures += 1;
   }
