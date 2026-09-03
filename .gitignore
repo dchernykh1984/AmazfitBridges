@@ -29,7 +29,11 @@ logs/
 *.iml
 
 # ===== AI agents =====
-.claude/
+# .claude/ itself is committed: it carries the agent instructions, skills and
+# hooks for this repository, which are project conventions in the same way the
+# ESLint config is. Only the per-machine file stays out - it holds absolute
+# paths and one developer's tool approvals.
+.claude/settings.local.json
 .cursor/
 .windsurf/
 .gemini/
