@@ -64,8 +64,9 @@ screen`, not `fix: update playfield.js`. Commitizen validates it locally and in 
   the OSV dependency scan. The pull request body is prose - what was wrong, what
   changed, how it is held in place by tests - and the repository's template lists
   what it should answer.
-- Pushing, merging, tagging and releasing are the user's call every time. Reading
-  (`git status`, `git log`, `git diff`, `gh ... view`) needs no permission.
+- Pushing, merging, tagging and releasing need explicit user authorization.
+  Follow authorization already given for the task. Reading (`git status`,
+  `git log`, `git diff`, `gh ... view`) needs no permission.
 
 ## Things that will bite you
 
@@ -98,3 +99,8 @@ exact hook definitions in `/hooks` before expecting them to run. See
 `.codex/README.md` for prerequisites, supported checks and permission limits.
 Git hooks are independent: run `pre-commit install` in each clone to enable the
 configured commit, commit-message and push checks.
+
+Explicit user authorization persists for the task. A request to create or update
+a pull request authorizes the pushes needed for that work; do not ask again for
+the same authorized action. Ask before actions outside that scope. Merging,
+tagging and releasing require their own explicit request.
