@@ -7,10 +7,12 @@ description: Branch, commit, open a pull request and drive CI to green in this r
 
 ## Ask before anything outward-facing
 
-Pushing, merging, tagging, deleting a branch and creating a release are the user's
-call, every time. Show the exact command and wait for a plain yes; narrating what
-you are about to do is not consent. Reading needs no permission: `git status`,
-`git log`, `git diff`, `git fetch`, `gh pr view`, `gh run view`.
+Outward operations need explicit user authorization. A request to create or
+update a pull request authorizes the pushes required for that task. Continue
+within authorization already given; ask only for an action outside that scope.
+Merging, tagging, deleting a branch and releasing need their own explicit request.
+Reading needs no permission: `git status`, `git log`, `git diff`, `git fetch`,
+`gh pr view`, `gh run view`.
 
 ## Branch
 
